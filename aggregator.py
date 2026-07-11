@@ -118,42 +118,73 @@ def build_html(arxiv, hf, blogs):
 <html>
 <head><meta charset="utf-8">
 <style>
-  body{{font-family:Arial,sans-serif;background:#f0f2f5;margin:0;padding:20px}}
-  .wrap{{max-width:680px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1)}}
-  .header{{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:30px;text-align:center}}
-  .header h1{{margin:0;font-size:24px}}
-  .header p{{margin:8px 0 0;opacity:.8;font-size:14px}}
-  .body{{padding:25px}}
-  h2{{color:#1a1a2e;border-bottom:2px solid #4CAF50;padding-bottom:6px;margin-top:28px}}
-  .item{{background:#f9f9f9;border-left:4px solid #4CAF50;padding:12px 15px;margin:10px 0;border-radius:0 6px 6px 0}}
-  .item a{{color:#0066cc;text-decoration:none;font-weight:600;font-size:14px}}
-  .item a:hover{{text-decoration:underline}}
+  body{{font-family:'Segoe UI',Arial,sans-serif;background:#eef1f5;margin:0;padding:20px}}
+  .wrap{{max-width:680px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.12)}}
+
+  /* Brand header */
+  .header{{background:linear-gradient(135deg,#0a0a23 0%,#1a1a6e 60%,#2d2d9e 100%);color:#fff;padding:36px 30px 28px;text-align:center}}
+  .brand-name{{font-size:22px;font-weight:800;letter-spacing:1px;margin:0 0 4px}}
+  .brand-name span{{color:#7eb8f7}}
+  .brand-tagline{{font-size:12px;opacity:.65;letter-spacing:2px;text-transform:uppercase;margin:0 0 18px}}
+  .digest-title{{font-size:18px;font-weight:600;margin:0 0 6px;border-top:1px solid rgba(255,255,255,.2);padding-top:16px}}
+  .digest-date{{font-size:13px;opacity:.75;margin:0}}
+
+  /* Body */
+  .body{{padding:28px 28px 10px}}
+  .intro{{background:#f0f4ff;border-radius:8px;padding:14px 18px;margin-bottom:24px;font-size:13px;color:#444;line-height:1.6}}
+  .intro strong{{color:#1a1a6e}}
+  h2{{color:#0a0a23;border-bottom:2px solid #1a1a6e;padding-bottom:6px;margin-top:28px;font-size:15px;text-transform:uppercase;letter-spacing:.5px}}
+  .item{{background:#f9faff;border-left:4px solid #1a1a6e;padding:12px 15px;margin:10px 0;border-radius:0 8px 8px 0}}
+  .item a{{color:#1a1a6e;text-decoration:none;font-weight:700;font-size:14px}}
+  .item a:hover{{text-decoration:underline;color:#2d2d9e}}
   .meta{{color:#888;font-size:12px;margin-top:4px}}
-  .desc{{color:#444;font-size:13px;margin:6px 0 0;line-height:1.5}}
-  .badge{{background:#4CAF50;color:#fff;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;margin-right:6px}}
-  .footer{{text-align:center;color:#aaa;font-size:12px;padding:20px;border-top:1px solid #eee;background:#fafafa}}
+  .desc{{color:#555;font-size:13px;margin:6px 0 0;line-height:1.55}}
+  .badge{{background:#1a1a6e;color:#fff;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:700;margin-right:6px}}
+
+  /* Footer */
+  .footer{{background:#0a0a23;color:#aaa;font-size:12px;padding:22px;text-align:center;margin-top:20px}}
+  .footer a{{color:#7eb8f7;text-decoration:none}}
+  .footer .company{{color:#fff;font-weight:700;font-size:13px;margin-bottom:6px}}
+  .divider{{border:none;border-top:1px solid #e8ecf5;margin:0}}
 </style>
 </head>
 <body>
 <div class="wrap">
+
   <div class="header">
-    <h1>🤖 Agentic AI Daily Digest</h1>
-    <p>{today} — Papers · Demos · Blog Posts</p>
+    <div class="brand-name">Helias <span>AI</span> &amp; Analytics</div>
+    <div class="brand-tagline">Intelligence · Insight · Innovation</div>
+    <div class="digest-title">Agentic AI Daily Digest</div>
+    <div class="digest-date">{today} &nbsp;·&nbsp; Papers &nbsp;·&nbsp; Demos &nbsp;·&nbsp; Blog Posts</div>
   </div>
+
   <div class="body">
-    <h2>📄 arXiv Papers</h2>
+    <div class="intro">
+      Welcome to your daily briefing on <strong>Agentic AI</strong> — curated and delivered by
+      <strong>Helias AI &amp; Analytics</strong>. Stay ahead of the latest research, tools, and
+      industry news shaping autonomous AI systems.
+    </div>
+
+    <h2>📄 arXiv Research Papers</h2>
     {section(arxiv, arxiv_item)}
 
     <h2>🤗 Hugging Face Updates</h2>
     {section(hf, hf_item)}
 
-    <h2>📰 Blog Posts</h2>
+    <h2>📰 Industry Blog Posts</h2>
     {section(blogs, blog_item)}
   </div>
+
+  <hr class="divider">
   <div class="footer">
-    🤖 Agentic AI News Bot — runs daily at 7 AM UTC<br>
-    <a href="https://github.com/henokfasil/Agentic_AI_News_Daily_Updates" style="color:#0066cc;">View on GitHub</a>
+    <div class="company">Helias AI &amp; Analytics</div>
+    This digest is produced and distributed by Helias AI &amp; Analytics.<br>
+    Empowering businesses with cutting-edge AI research and insights.<br><br>
+    <a href="mailto:hft4866@gmail.com">Contact Us</a> &nbsp;|&nbsp;
+    <a href="https://github.com/henokfasil/Agentic_AI_News_Daily_Updates">GitHub</a><br><br>
+    <span style="opacity:.5;font-size:11px">© {datetime.now().year} Helias AI &amp; Analytics. All rights reserved.</span>
   </div>
+
 </div>
 </body>
 </html>"""
@@ -190,7 +221,7 @@ def main():
 
     today = datetime.now().strftime("%B %d, %Y")
     html = build_html(arxiv, hf, blogs)
-    send_email(f"🤖 Agentic AI Daily Digest — {today}", html)
+    send_email(f"Helias AI & Analytics | Agentic AI Daily Digest — {today}", html)
 
 
 if __name__ == "__main__":
