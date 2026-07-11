@@ -29,17 +29,36 @@ CLAUDE.md          # this file
 
 ## Architecture
 
-`aggregator.py` has four logical sections:
+`aggregator.py` has five fetch functions + builder + sender:
 
 | Function | What it does |
 |---|---|
-| `fetch_arxiv_papers()` | arXiv API — searches "agentic AI OR AI agent OR autonomous agent OR multi-agent LLM", returns 8 most recent |
-| `fetch_huggingface_updates()` | HF REST API — 5 models + 5 spaces matching "agentic AI" / "AI agent", sorted by lastModified |
-| `fetch_blog_rss()` | feedparser — 8 RSS feeds (Anthropic, OpenAI, DeepMind, HF Blog, LangChain, Mistral, AI Snake Oil, The Gradient), 2 posts each, capped at 12 |
-| `build_html()` | Renders branded Helias AI & Analytics HTML email (deep navy gradient header, company tagline, intro blurb, three sections, branded footer) |
+| `fetch_huggingface_trending()` | HF REST API — 5 models + 5 spaces matching "agentic AI" / "AI agent", sorted by lastModified |
+| `fetch_new_model_releases()` | HF REST API — latest 2 models per org for 11 labs (Kimi/Moonshot, GLM/Zhipu, Qwen, DeepSeek, Meta Llama, Mistral, Google, Microsoft, Yi, Cohere, xAI/Grok) |
+| `fetch_github_releases()` | GitHub Atom feeds — latest release for 14 repos (VS Code, AutoGen, Semantic Kernel, CrewAI, LangGraph, LlamaIndex, PydanticAI, OpenAI Agents SDK, Dify, Agno, LiteLLM, Mem0, n8n, Flowise) |
+| `fetch_blog_rss()` | feedparser — 20 RSS feeds across AI labs, dev tools, industry news, research commentary; 2 posts each, capped at 20 |
+| `fetch_arxiv_papers()` | arXiv Atom API — searches "agentic AI OR AI agent OR autonomous agent OR multi-agent LLM OR agentic workflow", returns 8 most recent |
+| `build_html()` | Renders 5-section Helias-branded email: HF Trending → Model Releases → Framework Releases → Industry News → arXiv → Preface |
 | `send_email()` | Gmail SMTP SSL port 465 |
 
-All functions are independent — they can be called and tested individually.
+All fetch functions are independent and can be tested individually.
+
+## Email Sections (in order)
+
+1. 🤗 Hugging Face — Trending Models & Spaces
+2. 🆕 New Model Releases (Kimi · GLM · Qwen · Llama · Mistral & more)
+3. ⚙️ Framework & Tool Releases (VS Code · AutoGen · CrewAI · LangGraph & more)
+4. 📰 Industry News & Blog Posts
+5. 📄 arXiv Research Papers
+6. About this digest (preface)
+
+## Blog RSS Sources (20 feeds)
+
+**AI Labs:** Anthropic, OpenAI, Google DeepMind, Meta AI, Microsoft AI, Mistral AI, xAI, NVIDIA
+**Open-source:** Hugging Face Blog, LangChain
+**Dev Tools:** VS Code, GitHub Blog, GitHub Changelog
+**Industry News:** VentureBeat AI, TechCrunch AI, MIT Tech Review, Wired AI
+**Research & Commentary:** The Gradient, Import AI (Jack Clark), AI Snake Oil
 
 ---
 
