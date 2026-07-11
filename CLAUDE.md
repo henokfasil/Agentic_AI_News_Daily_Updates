@@ -70,11 +70,19 @@ https://myaccount.google.com/apppasswords
 
 ## VPS Cron Job
 
-Runs daily at 7:00 AM UTC:
+Runs daily at **10:00 PM Paris time** (Europe/Paris — auto-adjusts for DST):
 
 ```
-0 7 * * * /root/agentic_ai_bot/venv/bin/python /root/agentic_ai_bot/aggregator.py >> /root/agentic_ai_bot/cron.log 2>&1
+TZ=Europe/Paris
+0 22 * * * /root/agentic_ai_bot/venv/bin/python /root/agentic_ai_bot/aggregator.py >> /root/agentic_ai_bot/cron.log 2>&1
 ```
+
+UTC equivalent: 20:00 UTC in summer (CEST, UTC+2) · 21:00 UTC in winter (CET, UTC+1)
+
+### Change send time
+Edit crontab on VPS: `crontab -e`
+The `TZ=Europe/Paris` line above the job makes the schedule interpret times in Paris timezone.
+Change `0 22` to any `MM HH` in Paris local time.
 
 Check logs: `tail -50 /root/agentic_ai_bot/cron.log`
 
@@ -106,10 +114,6 @@ In `fetch_blog_rss()`, append to the `feeds` list:
 ### Add a new data source (e.g. YouTube, Reddit)
 Add a new `fetch_*()` function, call it in `main()`, pass results to `build_html()`,
 and add a renderer and section in `build_html()`.
-
-### Change send time
-Edit crontab on VPS: `crontab -e`
-Format: `MM HH * * *` (UTC). Currently `0 7` = 7:00 AM UTC.
 
 ---
 
