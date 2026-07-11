@@ -3,13 +3,14 @@
 ## Project Overview
 
 Daily email digest bot that aggregates agentic AI updates and delivers them as a branded
-**Helias AI & Analytics** newsletter every morning at 7 AM UTC.
+**Helias AI & Analytics** newsletter every evening at 10 PM Paris time.
 
 **Owner:** Helias AI & Analytics  
 **Repo:** https://github.com/henokfasil/Agentic_AI_News_Daily_Updates  
 **VPS:** `root@72.60.133.179` (Ubuntu 24, SSH via `~/.ssh/vps_key`)  
 **Python:** 3.12  
-**Delivery:** Gmail SMTP → `hft4866@gmail.com`
+**Delivery:** Gmail SMTP → `hft4866@gmail.com`  
+**Contact:** hft4866@gmail.com
 
 ---
 
@@ -152,6 +153,31 @@ No external AI API calls. No database. No state between runs.
 
 - **arXiv**: Public API, no key needed. Rate limit: be polite (1 request per run is fine).
 - **Hugging Face**: Public API endpoints used, no token needed for search/list.
-- **Gmail SMTP**: App password (not account password). Port 465 SSL. Requires 2FA on account.
-- **No deduplication**: Each run fetches fresh; the same paper may appear two days in a row if it stays at the top of arXiv results. This is acceptable for now.
-- **VPS**: Hostinger Ubuntu 24 VPS. The VPS can be silently stopped by Hostinger — if cron stops firing, check VPS status first.
+- **Gmail SMTP**: App password (not account password). Port 465 SSL. Requires 2FA on account. App password on file: stored in `/root/agentic_ai_bot/.env` on VPS.
+- **No deduplication**: Each run fetches fresh; the same paper/release may appear two days in a row. Acceptable for now.
+- **VPS**: Hostinger Ubuntu 24 VPS. Can be silently stopped by Hostinger — if cron stops firing, check VPS status first.
+- **GitHub Atom feeds**: No auth needed. Some repos may have no releases yet — those are silently skipped.
+- **xAI RSS**: Feed URL may be unstable — silently skipped on error, does not block the rest.
+
+---
+
+## Roadmap / Next Steps
+
+### Subscriber Management (planned: end of July 2026)
+- Sign up for **Brevo** (free tier: 300 emails/day, unlimited contacts)
+- Create Brevo subscription form → share URL on LinkedIn
+- Migrate bot from Gmail SMTP to Brevo SMTP
+- Bot will send to all Brevo contacts automatically
+
+### LinkedIn Audience Validation (in progress)
+- Post a teaser on LinkedIn (Helias AI & Analytics company page)
+- Ask audience to comment "YES" or react with 🔥 to gauge interest
+- Target: 10+ reactions = proceed with Brevo setup
+- Recommended post: Option B (show actual email screenshot + CTA)
+
+### Future Ideas
+- Add YouTube source (latest AI channel uploads via YouTube Data API v3)
+- Add Papers With Code trending section
+- Add Reddit r/MachineLearning / r/LocalLLaMA highlights
+- Add weekly summary digest (separate Sunday edition)
+- Deduplication across consecutive days
