@@ -159,20 +159,21 @@ def build_html(arxiv, hf, blogs):
   </div>
 
   <div class="body">
-    <div class="intro">
-      Welcome to your daily briefing on <strong>Agentic AI</strong> — curated and delivered by
-      <strong>Helias AI &amp; Analytics</strong>. Stay ahead of the latest research, tools, and
-      industry news shaping autonomous AI systems.
-    </div>
-
-    <h2>📄 arXiv Research Papers</h2>
-    {section(arxiv, arxiv_item)}
 
     <h2>🤗 Hugging Face Updates</h2>
     {section(hf, hf_item)}
 
     <h2>📰 Industry Blog Posts</h2>
     {section(blogs, blog_item)}
+
+    <h2>📄 arXiv Research Papers</h2>
+    {section(arxiv, arxiv_item)}
+
+    <div class="intro">
+      <strong>About this digest:</strong> Your daily briefing on <strong>Agentic AI</strong> —
+      curated and delivered by <strong>Helias AI &amp; Analytics</strong>. Covering the latest
+      research, open-source tools, and industry news shaping autonomous AI systems.
+    </div>
   </div>
 
   <hr class="divider">
