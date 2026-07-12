@@ -57,15 +57,20 @@ https://myaccount.google.com/apppasswords
 
 ## Architecture
 
-Single file (`aggregator.py`) — no database, no external AI APIs, no state between runs.
+Single file (`aggregator.py`) with smart deduplication — no database, no external AI APIs.
 
 ```
+load_cache()              → sent_items.json (tracks items from past 7 days)
 fetch_arxiv_papers()      → arXiv Atom API
 fetch_huggingface_updates() → HF REST API (models + spaces)
-fetch_blog_rss()          → feedparser (8 RSS feeds)
+fetch_blog_rss()          → feedparser (20 RSS feeds)
+filter_new_items()        → Remove items sent in past 7 days
 build_html()              → Helias AI & Analytics branded HTML email
 send_email()              → Gmail SMTP SSL port 465
+save_cache()              → Update sent_items.json
 ```
+
+**Deduplication**: Only includes truly new content — trending items appearing two days in a row are sent once. News sources that repeat articles are automatically filtered.
 
 ---
 

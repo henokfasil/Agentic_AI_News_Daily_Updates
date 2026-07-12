@@ -99,12 +99,46 @@ TZ=Europe/Paris
 
 UTC equivalent: 20:00 UTC in summer (CEST, UTC+2) · 21:00 UTC in winter (CET, UTC+1)
 
-### Change send time
-Edit crontab on VPS: `crontab -e`
-The `TZ=Europe/Paris` line above the job makes the schedule interpret times in Paris timezone.
-Change `0 22` to any `MM HH` in Paris local time.
+### ⏰ Troubleshoot Timing Issues
 
-Check logs: `tail -50 /root/agentic_ai_bot/cron.log`
+If you're receiving emails at the wrong time:
+
+**1. Check the current cron job:**
+```bash
+ssh root@72.60.133.179
+crontab -l | grep aggregator
+```
+
+Look for a line with `0 22 * * *` (22:00 = 10 PM). If it shows a different time (e.g., `0 0` = midnight), that's your issue.
+
+**2. Check the logs for actual execution time:**
+```bash
+ssh root@72.60.133.179
+tail -20 /root/agentic_ai_bot/cron.log
+```
+
+Each run logs `[YYYY-MM-DD HH:MM:SS] Starting aggregation...` — this shows the exact time it ran.
+
+**3. Fix the cron timing:**
+```bash
+ssh root@72.60.133.179
+crontab -e
+```
+Find the aggregator line and change to `0 22 * * *` for 10 PM, or use this format:
+- `0 22` = 10:00 PM
+- `0 23` = 11:00 PM
+- `0 0` = midnight (00:00)
+- `30 20` = 8:30 PM
+
+Then save and exit. The `TZ=Europe/Paris` prefix on the line above ensures it uses Paris timezone.
+
+**4. Verify the fix with a test run:**
+```bash
+ssh root@72.60.133.179
+cd /root/agentic_ai_bot && source venv/bin/activate && python aggregator.py
+```
+
+This will run immediately and send a test email. Check that you receive it with the correct timestamp in the logs.
 
 ---
 
@@ -149,12 +183,34 @@ No external AI API calls. No database. No state between runs.
 
 ---
 
+## Deduplication & Filtering
+
+The bot now tracks all items sent in the past **7 days** using a `sent_items.json` cache:
+- **How it works**: Each item (HF model, blog post, paper, etc.) is hashed and cached after sending
+- **Smart filtering**: If an item appears in multiple runs within 7 days, only the first email includes it
+- **No false positives**: Identical items with slightly different metadata are deduplicated
+- **Cache location**: `sent_items.json` (created automatically on first run, gitignored)
+- **Reset cache**: Delete `sent_items.json` to allow resending of older items
+
+### What counts as "new"?
+- Blog posts / news with different titles (same source)
+- Model releases from different labs
+- GitHub releases with new version numbers
+- arXiv papers with different titles
+
+### What gets filtered?
+- Yesterday's trending HF model that's still trending today
+- A blog post reappearing in RSS feeds
+- Research paper that's in two feeds
+
+---
+
 ## Known Constraints
 
 - **arXiv**: Public API, no key needed. Rate limit: be polite (1 request per run is fine).
 - **Hugging Face**: Public API endpoints used, no token needed for search/list.
 - **Gmail SMTP**: App password (not account password). Port 465 SSL. Requires 2FA on account. App password on file: stored in `/root/agentic_ai_bot/.env` on VPS.
-- **No deduplication**: Each run fetches fresh; the same paper/release may appear two days in a row. Acceptable for now.
+- **Deduplication**: Uses MD5 hash of item fields. Items older than 7 days can be resent if they reappear.
 - **VPS**: Hostinger Ubuntu 24 VPS. Can be silently stopped by Hostinger — if cron stops firing, check VPS status first.
 - **GitHub Atom feeds**: No auth needed. Some repos may have no releases yet — those are silently skipped.
 - **xAI RSS**: Feed URL may be unstable — silently skipped on error, does not block the rest.

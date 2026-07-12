@@ -2,11 +2,13 @@ import os
 import smtplib
 import requests
 import urllib.parse
-from datetime import datetime
+import json
+from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from dotenv import load_dotenv
 import feedparser
+import hashlib
 
 load_dotenv()
 
@@ -14,6 +16,52 @@ GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL", GMAIL_USER)
 
+# Deduplication cache
+CACHE_FILE = "sent_items.json"
+DEDUP_DAYS = 7  # Don't resend items from the past 7 days
+
+
+# ---------------------------------------------------------------------------
+# Cache management for deduplication
+# ---------------------------------------------------------------------------
+def hash_item(item_data):
+    """Generate a hash for an item to track if it's been sent before."""
+    item_str = json.dumps(item_data, sort_keys=True)
+    return hashlib.md5(item_str.encode()).hexdigest()
+
+def load_cache():
+    """Load the cache of previously sent items."""
+    if not os.path.exists(CACHE_FILE):
+        return {}
+    try:
+        with open(CACHE_FILE, 'r') as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_cache(cache):
+    """Save the cache of sent items."""
+    with open(CACHE_FILE, 'w') as f:
+        json.dump(cache, f, indent=2)
+
+def is_item_new(item_hash, cache):
+    """Check if an item is new (not sent in the past DEDUP_DAYS days)."""
+    if item_hash not in cache:
+        return True
+    sent_date = datetime.fromisoformat(cache[item_hash])
+    days_ago = (datetime.now() - sent_date).days
+    return days_ago >= DEDUP_DAYS
+
+def filter_new_items(items, key_fields, cache):
+    """Filter items list to only include new ones not sent recently."""
+    new_items = []
+    for item in items:
+        # Create hashable dict from specified fields
+        hash_data = {k: item.get(k) for k in key_fields if k in item}
+        item_hash = hash_item(hash_data)
+        if is_item_new(item_hash, cache):
+            new_items.append((item, item_hash))
+    return new_items
 
 # ---------------------------------------------------------------------------
 # 1. Hugging Face — trending models & spaces (agentic AI search)
@@ -342,31 +390,66 @@ def send_email(subject, html_body):
 # Main
 # ---------------------------------------------------------------------------
 def main():
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting aggregation...")
+    start_time = datetime.now()
+    print(f"\n[{start_time.strftime('%Y-%m-%d %H:%M:%S')}] Starting aggregation...")
+    print(f"  📧 Deduplication: tracking sent items from past {DEDUP_DAYS} days")
+
+    # Load cache
+    cache = load_cache()
+    items_sent_before = len(cache)
+    print(f"  📦 Cache loaded: {items_sent_before} items previously sent")
 
     print("  → Hugging Face trending...")
-    hf_trending = fetch_huggingface_trending()
-    print(f"     {len(hf_trending)} items")
+    hf_trending_raw = fetch_huggingface_trending()
+    hf_trending_filtered = [item for item, _ in filter_new_items(hf_trending_raw, ['name', 'type'], cache)]
+    print(f"     {len(hf_trending_raw)} total, {len(hf_trending_filtered)} new")
 
     print("  → New model releases (HF orgs)...")
-    model_releases = fetch_new_model_releases()
-    print(f"     {len(model_releases)} items")
+    model_releases_raw = fetch_new_model_releases()
+    model_releases_filtered = [item for item, _ in filter_new_items(model_releases_raw, ['name', 'org'], cache)]
+    print(f"     {len(model_releases_raw)} total, {len(model_releases_filtered)} new")
 
     print("  → GitHub framework/tool releases...")
-    gh_releases = fetch_github_releases()
-    print(f"     {len(gh_releases)} releases")
+    gh_releases_raw = fetch_github_releases()
+    gh_releases_filtered = [item for item, _ in filter_new_items(gh_releases_raw, ['name', 'version'], cache)]
+    print(f"     {len(gh_releases_raw)} total, {len(gh_releases_filtered)} new")
 
     print("  → Industry blogs & news...")
-    blogs = fetch_blog_rss()
-    print(f"     {len(blogs)} posts")
+    blogs_raw = fetch_blog_rss()
+    blogs_filtered = [item for item, _ in filter_new_items(blogs_raw, ['title', 'source'], cache)]
+    print(f"     {len(blogs_raw)} total, {len(blogs_filtered)} new")
 
     print("  → arXiv papers...")
-    arxiv = fetch_arxiv_papers()
-    print(f"     {len(arxiv)} papers")
+    arxiv_raw = fetch_arxiv_papers()
+    arxiv_filtered = [item for item, _ in filter_new_items(arxiv_raw, ['title', 'authors'], cache)]
+    print(f"     {len(arxiv_raw)} total, {len(arxiv_filtered)} new")
+
+    # Only send if there are new items
+    if not any([hf_trending_filtered, model_releases_filtered, gh_releases_filtered, blogs_filtered, arxiv_filtered]):
+        print(f"  ⏭️  No new items found. Skipping email.")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Aggregation complete (no changes)")
+        return
 
     today = datetime.now().strftime("%B %d, %Y")
-    html  = build_html(hf_trending, model_releases, gh_releases, blogs, arxiv)
+    html = build_html(hf_trending_filtered, model_releases_filtered, gh_releases_filtered, blogs_filtered, arxiv_filtered)
     send_email(f"Helias AI & Analytics | Agentic AI Daily Digest — {today}", html)
+
+    # Update cache with newly sent items
+    for items, key_fields in [
+        (hf_trending_raw, ['name', 'type']),
+        (model_releases_raw, ['name', 'org']),
+        (gh_releases_raw, ['name', 'version']),
+        (blogs_raw, ['title', 'source']),
+        (arxiv_raw, ['title', 'authors']),
+    ]:
+        for item in items:
+            hash_data = {k: item.get(k) for k in key_fields if k in item}
+            item_hash = hash_item(hash_data)
+            cache[item_hash] = datetime.now().isoformat()
+
+    save_cache(cache)
+    print(f"  💾 Cache updated: {len(cache) - items_sent_before} new items tracked")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Aggregation complete ✅")
 
 
 if __name__ == "__main__":
