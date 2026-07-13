@@ -9,6 +9,7 @@ from email.mime.text import MIMEText
 from dotenv import load_dotenv
 import feedparser
 import hashlib
+import difflib
 
 load_dotenv()
 
@@ -52,15 +53,42 @@ def is_item_new(item_hash, cache):
     days_ago = (datetime.now() - sent_date).days
     return days_ago >= DEDUP_DAYS
 
-def filter_new_items(items, key_fields, cache):
-    """Filter items list to only include new ones not sent recently."""
+def similarity_ratio(a, b):
+    """Calculate similarity between two strings (0-1, higher = more similar)."""
+    return difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+def is_duplicate_in_list(item, existing_items, threshold=0.75):
+    """Check if item is similar to any item already in the list."""
+    title_key = next((k for k in ['title', 'name'] if k in item), None)
+    if not title_key:
+        return False
+
+    item_title = item.get(title_key, "").lower()
+    for existing in existing_items:
+        existing_title = existing.get(title_key, "").lower()
+        if similarity_ratio(item_title, existing_title) >= threshold:
+            return True
+    return False
+
+def filter_new_items(items, key_fields, cache, local_dedup=True):
+    """Filter items: remove cache-tracked + local duplicates."""
     new_items = []
+    seen_this_run = []
+
     for item in items:
-        # Create hashable dict from specified fields
+        # Check against global cache (7-day dedup)
         hash_data = {k: item.get(k) for k in key_fields if k in item}
         item_hash = hash_item(hash_data)
-        if is_item_new(item_hash, cache):
-            new_items.append((item, item_hash))
+        if not is_item_new(item_hash, cache):
+            continue
+
+        # Check against local duplicates in this run (similarity-based)
+        if local_dedup and is_duplicate_in_list(item, seen_this_run, threshold=0.75):
+            continue
+
+        seen_this_run.append(item)
+        new_items.append((item, item_hash))
+
     return new_items
 
 # ---------------------------------------------------------------------------
@@ -198,7 +226,9 @@ def fetch_blog_rss():
     for name, url in feeds:
         try:
             feed = feedparser.parse(url)
-            for entry in feed.entries[:2]:
+            # Take only the top 1 most recent post per source to avoid duplication
+            if feed.entries:
+                entry = feed.entries[0]
                 summary = entry.get("summary", "")
                 posts.append({
                     "source": name,
@@ -208,7 +238,7 @@ def fetch_blog_rss():
                 })
         except Exception as e:
             print(f"  RSS error [{name}]: {e}")
-    return posts[:20]
+    return posts[:15]  # Cap at 15 total blog posts
 
 
 # ---------------------------------------------------------------------------
@@ -401,28 +431,28 @@ def main():
 
     print("  → Hugging Face trending...")
     hf_trending_raw = fetch_huggingface_trending()
-    hf_trending_filtered = [item for item, _ in filter_new_items(hf_trending_raw, ['name', 'type'], cache)]
-    print(f"     {len(hf_trending_raw)} total, {len(hf_trending_filtered)} new")
+    hf_trending_filtered = [item for item, _ in filter_new_items(hf_trending_raw, ['name', 'type'], cache)][:8]
+    print(f"     {len(hf_trending_raw)} total, {len(hf_trending_filtered)} new (after dedup)")
 
     print("  → New model releases (HF orgs)...")
     model_releases_raw = fetch_new_model_releases()
-    model_releases_filtered = [item for item, _ in filter_new_items(model_releases_raw, ['name', 'org'], cache)]
-    print(f"     {len(model_releases_raw)} total, {len(model_releases_filtered)} new")
+    model_releases_filtered = [item for item, _ in filter_new_items(model_releases_raw, ['name', 'org'], cache)][:12]
+    print(f"     {len(model_releases_raw)} total, {len(model_releases_filtered)} new (after dedup)")
 
     print("  → GitHub framework/tool releases...")
     gh_releases_raw = fetch_github_releases()
-    gh_releases_filtered = [item for item, _ in filter_new_items(gh_releases_raw, ['name', 'version'], cache)]
-    print(f"     {len(gh_releases_raw)} total, {len(gh_releases_filtered)} new")
+    gh_releases_filtered = [item for item, _ in filter_new_items(gh_releases_raw, ['name', 'version'], cache)][:10]
+    print(f"     {len(gh_releases_raw)} total, {len(gh_releases_filtered)} new (after dedup)")
 
     print("  → Industry blogs & news...")
     blogs_raw = fetch_blog_rss()
-    blogs_filtered = [item for item, _ in filter_new_items(blogs_raw, ['title', 'source'], cache)]
-    print(f"     {len(blogs_raw)} total, {len(blogs_filtered)} new")
+    blogs_filtered = [item for item, _ in filter_new_items(blogs_raw, ['title', 'source'], cache)][:12]
+    print(f"     {len(blogs_raw)} total, {len(blogs_filtered)} new (after dedup)")
 
     print("  → arXiv papers...")
     arxiv_raw = fetch_arxiv_papers()
-    arxiv_filtered = [item for item, _ in filter_new_items(arxiv_raw, ['title', 'authors'], cache)]
-    print(f"     {len(arxiv_raw)} total, {len(arxiv_filtered)} new")
+    arxiv_filtered = [item for item, _ in filter_new_items(arxiv_raw, ['title', 'authors'], cache)][:6]
+    print(f"     {len(arxiv_raw)} total, {len(arxiv_filtered)} new (after dedup)")
 
     # Only send if there are new items
     if not any([hf_trending_filtered, model_releases_filtered, gh_releases_filtered, blogs_filtered, arxiv_filtered]):
